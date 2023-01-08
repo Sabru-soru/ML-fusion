@@ -19,7 +19,7 @@ X=data[["angle","heat","field","emission","x_m"]]
 # y=data.drop(["angle","heat","field","emission","x_m"], axis=1)
 y=data["Pot"]
 
-X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2)
+# X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2)
 
 
 
@@ -57,21 +57,21 @@ X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2)
 #%%
 xg_reg = xgb.XGBRegressor(
         objective = 'reg:squarederror',
-        colsample_bytree = 0.7,
-        learning_rate = 0.1,
-        max_depth = 100,
+        colsample_bytree = 0.3,
+        learning_rate = 0.25,
+        max_depth = 5,
         min_child_weight = 3,
-        n_estimators = 50,
-        subsample = 0.7)
+        n_estimators = 120,
+        subsample = 0.5)
 
-xg_reg.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=1)
-
+#xg_reg.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=1)
+xg_reg.fit(X, y)
 
 # xg_reg = xgb.XGBRegressor()#objective ='reg:linear', colsample_bytree = 0.3, learning_rate = 0.1, max_depth = 5, alpha = 10, n_estimators = 10)
 # xg_reg.fit(X_train,y_train)
 # #xg_reg.fit(X,y)
 
-preds = xg_reg.predict(X_test)
+#preds = xg_reg.predict(X_test)
 
 # rmse = np.sqrt(mean_squared_error(y_test, preds))
 # print("RMSE: %f" % (rmse))
@@ -85,10 +85,10 @@ preds = xg_reg.predict(X_test)
 #%%
 #Try to get new values from the model
 new_values=pd.DataFrame()
-angle_new=[5]
-heat_new=[0.2]
-field_new=[2.2]
-emission_new=[0.8]
+angle_new=[3]
+heat_new=[0.15]
+field_new=[3]
+emission_new=[0.9]
 
 new_values = pd.DataFrame(angle_new, columns=['angle'])
 new_values['heat'] = heat_new
