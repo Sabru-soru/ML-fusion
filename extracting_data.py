@@ -67,8 +67,6 @@ print('Čas za branje je: ',intermediate_time - start_time)
 df.to_csv('df_data.csv',index=False)
 
 
-#TODO
-#We will add the "lag" features when we import the dataframe
 
 
 
