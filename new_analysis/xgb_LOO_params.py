@@ -5,6 +5,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 import numpy as np
+import itertools
 
 file_path = 'data_cleaned_interpreter.xlsx'
 df = pd.read_excel(file_path)
@@ -22,55 +23,66 @@ num_unique_combinations, num_unique_x_m
 X = df[['angle', 'heat', 'field', 'emission', 'x_m']]
 y = df['Pot']
 
-# Define hyperparameter grid for Random Forest
-rf_param_grid = {
-    'n_estimators': [50, 100, 200],
-    'max_depth': [None, 10, 20, 30],
-    'min_samples_split': [2, 5, 10],
-    'min_samples_leaf': [1, 2, 4]
+
+# Reduced hyperparameter grid for XGBoost for faster computation
+xgb_param_grid_reduced = {
+    'n_estimators': [100, 600, 1000],
+    'max_depth': [3, 5, 7],
+    'learning_rate': [0.01, 0.1, 0.3],
+    'subsample': [0.8, 1.0],
+    'colsample_bytree': [0.8, 1.0]
 }
 
-# Define hyperparameter grid for XGBoost
-xgb_param_grid = {
-    'n_estimators': [50, 100, 200],
-    'max_depth': [3, 5, 7, 9],
-    'learning_rate': [0.01, 0.1, 0.2],
-    'subsample': [0.7, 0.8, 0.9, 1.0],
-    'colsample_bytree': [0.7, 0.8, 0.9, 1.0]
-}
+# Generate all combinations of hyperparameters
+hyperparameter_combinations = list(itertools.product(*xgb_param_grid_reduced.values()))
+hyperparameter_keys = xgb_param_grid_reduced.keys()
 
-# Initialize lists to store results
-rf_mape_scores = []
-xgb_mape_scores = []
+print(f'Number of hyperparameter combinations: {len(hyperparameter_combinations)}')
 
-# Iterate through each unique combination for "leave-one-curve-out" validation
-for index, row in unique_combinations.iterrows():
-    # Filter data for training and testing based on the unique combination
-    test_condition = (df['angle'] == row['angle']) & (df['heat'] == row['heat']) & \
-                     (df['field'] == row['field']) & (df['emission'] == row['emission'])
-    
-    X_train = X.loc[~test_condition]
-    y_train = y.loc[~test_condition]
-    X_test = X.loc[test_condition]
-    y_test = y.loc[test_condition]
-    
-    # Grid search for Random Forest
-    rf_grid_search = GridSearchCV(RandomForestRegressor(), rf_param_grid, 
-                                  cv=5, n_jobs=-1, verbose=0)
-    rf_grid_search.fit(X_train, y_train)
-    rf_best_params = rf_grid_search.best_params_
-    rf_pred = rf_grid_search.predict(X_test)
-    rf_mape = mean_absolute_percentage_error(y_test, rf_pred)
-    rf_mape_scores.append({'MAPE': rf_mape, 'Params': rf_best_params})
-    
-    # Grid search for XGBoost
-    xgb_grid_search = GridSearchCV(XGBRegressor(), xgb_param_grid, 
-                                   cv=5, n_jobs=-1, verbose=0)
-    xgb_grid_search.fit(X_train, y_train)
-    xgb_best_params = xgb_grid_search.best_params_
-    xgb_pred = xgb_grid_search.predict(X_test)
-    xgb_mape = mean_absolute_percentage_error(y_test, xgb_pred)
-    xgb_mape_scores.append({'MAPE': xgb_mape, 'Params': xgb_best_params})
+# Initialize list to store overall results
+overall_results = []
 
-# Show some results
-rf_mape_scores[:3], xgb_mape_scores[:3]
+# Iterate through each hyperparameter combination
+for hyperparameters in hyperparameter_combinations:
+    i=0
+    params = dict(zip(hyperparameter_keys, hyperparameters))
+    
+    # Initialize list to store MAPE scores for each "leave-one-curve-out"
+    mape_scores = []
+    
+    # Iterate through each unique combination for "leave-one-curve-out" validation
+    for index, row in unique_combinations.iterrows():
+        # Filter data for training and testing based on the unique combination
+        test_condition = (df['angle'] == row['angle']) & (df['heat'] == row['heat']) & \
+                         (df['field'] == row['field']) & (df['emission'] == row['emission'])
+        
+        X_train = X.loc[~test_condition]
+        y_train = y.loc[~test_condition]
+        X_test = X.loc[test_condition]
+        y_test = y.loc[test_condition]
+        
+        # Train XGBoost model with the current hyperparameter combination
+        xgb_model = XGBRegressor(**params)
+        xgb_model.fit(X_train, y_train)
+        xgb_pred = xgb_model.predict(X_test)
+        
+        # Calculate MAPE for the test set
+        mape = mean_absolute_percentage_error(y_test, xgb_pred)
+        mape_scores.append(mape)
+    
+    # Calculate average MAPE across all test sets
+    avg_mape = np.mean(mape_scores)
+    
+    # Store the results
+    overall_results.append({'Params': params, 'Avg_MAPE': avg_mape})
+
+    print(f'Finished hyperparameter combination: {params}')
+    print(f'Avg_MAPE: {avg_mape}')
+    print(f'Iteration: {i}')
+    i+=1
+
+# Sort the results by Avg_MAPE to find the best hyperparameters
+overall_results_sorted = sorted(overall_results, key=lambda x: x['Avg_MAPE'])
+
+# Show the best hyperparameters based on lowest Avg_MAPE
+overall_results_sorted[0]
