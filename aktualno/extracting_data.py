@@ -11,10 +11,9 @@ import numpy as np
 
 start_time = time.time()
 "load file"
-#xls = pd.ExcelFile('output_fusion.xlsx')
-df1 = pd.read_excel('output_fusion.xlsx', sheet_name='1.5 degree')
-df2 = pd.read_excel('output_fusion.xlsx', sheet_name='4 degree')
-df3 = pd.read_excel('output_fusion.xlsx', sheet_name='6 degree')
+df1 = pd.read_excel('data/output_fusion.xlsx', sheet_name='1.5 degree')
+df2 = pd.read_excel('data/output_fusion.xlsx', sheet_name='4 degree')
+df3 = pd.read_excel('data/output_fusion.xlsx', sheet_name='6 degree')
 
 #%%
 df = pd.DataFrame()
@@ -57,7 +56,6 @@ def add_target(target,df):
 for target in target:
     df=add_target(target,df)
 
-
 #%%
 intermediate_time = time.time()
 print('Čas za branje je: ',intermediate_time - start_time)
@@ -65,9 +63,3 @@ print('Čas za branje je: ',intermediate_time - start_time)
 #%%
 #Save the data
 df.to_csv('df_data.csv',index=False)
-
-
-
-
-
-

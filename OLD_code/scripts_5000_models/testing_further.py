@@ -1,26 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jan 13 15:18:23 2023
-
-@author: urosu
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 12 17:56:16 2023
-
-@author: urosu
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Dec  7 15:27:32 2022
-
-@author: urosu
-"""
-
 import pandas as pd
+# import numpy as np
+import matplotlib.pyplot as plt
 import xgboost as xgb
+# from sklearn.metrics import mean_squared_error
+# from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 import itertools
 from statistics import mean 
 
@@ -29,27 +12,22 @@ data=data.rename(columns={"x_[m]": "x_m"})  #Change this in extracting_data.py
 
 data=data.drop_duplicates(subset=["angle","heat","field","emission","x_m"], keep=False)
 
-<<<<<<< HEAD
 
 #For faster tuning of hyperparameters
-data=data.loc[data['x_m'].isin(data["x_m"].unique()[0::600]), :]
-=======
-#For faster tuning of hyperparameters, takes every 500th element
-data=data.loc[data['x_m'].isin(data["x_m"].unique()[0::500]), :]
->>>>>>> 1f5489331d70f1632389be0841dc11202e4f8bd0
+data=data.loc[data['x_m'].isin(data["x_m"].unique()[0::20]), :]
 
-target="Te"
+target="Pot"
 
 #%%HYPERPARAMETERS
 
 temp_target_df= pd.DataFrame(columns=["angle","heat","field","emission"], dtype='int8')
 hyper_params = {
-    'learning_rate': [0.1,0.2,0.3],
-    'max_depth': [1,2,4],
-    'min_child_weight': [1, 2, 3],
-    'subsample': [0.1, 0.5, 0.6],
-    'colsample_bytree': [0.4, 0.6, 0.8],
-    'n_estimators' : [500, 600, 700, 900, 1000]
+    'learning_rate': [0.1],
+    'max_depth': [2],
+    'min_child_weight': [1],
+    'subsample': [0.5],
+    'colsample_bytree': [0.8],
+    'n_estimators' : [600]
 }
 
 a = hyper_params.values()
@@ -105,11 +83,18 @@ for c in combinations:
 
         
         #Because we divide and so we dont get infinity
-        y_test.loc[y_test[target]==0,target]=0.001
+        y_test.loc[y_test[target]==0,target]=0.00001
         
         #Get in percent
         rel_errors=(abs(X_test['predictions']-y_test[target])/y_test[target])*100
-        error=rel_errors.iloc[1:-1].mean()
+        error=rel_errors.iloc[10:-10].mean()
+        
+        plt.plot(X_test['x_m'], X_test['predictions'],label="Prediction")
+        plt.plot(X_test['x_m'], y_test[target],label="True")
+        plt.legend()
+        plt.xlabel('Length [m]')
+        plt.ylabel('Pot [...]')
+        plt.show()
         
         error_avg.append(error)
     
@@ -134,8 +119,8 @@ for c in combinations:
 
 #%% EXPORT
 df=pd.DataFrame(values)
-sort_df=df.sort_values(["error"])
-sort_df.to_csv('Tested_further_Te.csv') 
+# sort_df=df.sort_values(["error"])
+# df.to_csv('Tested_further_Pot.csv') 
 
 best=df[df["error"]==df["error"].min()]
 print(best)

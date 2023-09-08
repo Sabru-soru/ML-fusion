@@ -1,61 +1,31 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sat Jan 14 08:18:28 2023
-
-@author: urosu
+Script used for finding best hyperprameters if we use separate models for each x_m.
+We use XGBoost regressor.
 """
-
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jan 13 15:18:23 2023
-
-@author: urosu
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 12 17:56:16 2023
-
-@author: urosu
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Dec  7 15:27:32 2022
-
-@author: urosu
-"""
-
+#%%
 import pandas as pd
-# import numpy as np
-import matplotlib.pyplot as plt
 import xgboost as xgb
-# from sklearn.metrics import mean_squared_error
-# from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 import itertools
 from statistics import mean 
-
-data=pd.read_csv('../df_data.csv')
-data=data.rename(columns={"x_[m]": "x_m"})  #Change this in extracting_data.py
+data=pd.read_csv('data/df_data.csv')
+data=data.rename(columns={"x_[m]": "x_m"})  #could change this in extracting_data.py
 
 data=data.drop_duplicates(subset=["angle","heat","field","emission","x_m"], keep=False)
 
-
 #For faster tuning of hyperparameters
-data=data.loc[data['x_m'].isin(data["x_m"].unique()[0::20]), :]
+data=data.loc[data['x_m'].isin(data["x_m"].unique()[0::500]), :]
 
-target="Pot"
+target="Te"
 
 #%%HYPERPARAMETERS
-
 temp_target_df= pd.DataFrame(columns=["angle","heat","field","emission"], dtype='int8')
 hyper_params = {
-    'learning_rate': [0.1],
-    'max_depth': [2],
-    'min_child_weight': [1],
-    'subsample': [0.5],
-    'colsample_bytree': [0.8],
-    'n_estimators' : [600]
+    'learning_rate': [0.1,0.2,0.3],
+    'max_depth': [1,2,4],
+    'min_child_weight': [1, 2, 3],
+    'subsample': [0.1, 0.5, 0.6],
+    'colsample_bytree': [0.4, 0.6, 0.8],
+    'n_estimators' : [500, 600, 700, 900, 1000]
 }
 
 a = hyper_params.values()
@@ -73,11 +43,9 @@ def model_function(angle, heat, field, emission, x_m, xg_reg):
     
     temp_target_df.loc[0] = [angle,heat,field,emission]
     value=model.predict(temp_target_df)[0]
-    
     return value
 
 #%%
-
 i=0
 values = {'learning_rate': [], 'max_depth': [], 'min_child_weight': [], 'subsample': [], 'colsample_bytree': [], 'n_estimators': [], 'error': []}
 for c in combinations:
@@ -105,24 +73,14 @@ for c in combinations:
         X_test=test[["angle","heat","field","emission","x_m"]]
         y_test=test[[target]]
         
-        
-        
         X_test['predictions'] = X_test.apply(lambda row: model_function(row['angle'], row['heat'], row['field'], row['emission'], row['x_m'], xg_reg), axis=1)
 
-        
         #Because we divide and so we dont get infinity
-        y_test.loc[y_test[target]==0,target]=0.00001
+        y_test.loc[y_test[target]==0,target]=0.001
         
         #Get in percent
         rel_errors=(abs(X_test['predictions']-y_test[target])/y_test[target])*100
-        error=rel_errors.iloc[10:-10].mean()
-        
-        plt.plot(X_test['x_m'], X_test['predictions'],label="Prediction")
-        plt.plot(X_test['x_m'], y_test[target],label="True")
-        plt.legend()
-        plt.xlabel('Length [m]')
-        plt.ylabel('Pot [...]')
-        plt.show()
+        error=rel_errors.iloc[1:-1].mean()
         
         error_avg.append(error)
     
@@ -144,33 +102,10 @@ for c in combinations:
     # print(c)
 
 
-
 #%% EXPORT
 df=pd.DataFrame(values)
-# sort_df=df.sort_values(["error"])
-# df.to_csv('Tested_further_Pot.csv') 
+sort_df=df.sort_values(["error"])
+sort_df.to_csv('Tested_further_Te.csv') 
 
 best=df[df["error"]==df["error"].min()]
 print(best)
-# #%%
-# fig = plt.figure()
-# plt.plot(X_test['x_m'], X_test['predictions'],label="Prediction")
-# plt.plot(X_test['x_m'], y_test[target],label="True")
-
-# plt.xlabel('Length [m]')
-# plt.ylabel('Pot [...]')
-# #plt.gcf().autofmt_xdate()
-# plt.grid()
-# plt.tight_layout()
-# #fig.savefig("3_1.png", dpi = 200)
-# plt.legend()
-# #plt.savefig(f"figs/{picture}",dpi=100)
-# plt.show()
-
-# error=abs(X_test['predictions']-y_test[target]).sum()
-# print(error)
-
-
-
-
-
