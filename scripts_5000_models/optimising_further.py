@@ -20,21 +20,16 @@ Created on Wed Dec  7 15:27:32 2022
 """
 
 import pandas as pd
-# import numpy as np
-# import matplotlib.pyplot as plt
 import xgboost as xgb
-# from sklearn.metrics import mean_squared_error
-# from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 import itertools
 from statistics import mean 
 
-data=pd.read_csv('df_data.csv')
+data=pd.read_csv('../df_data.csv')
 data=data.rename(columns={"x_[m]": "x_m"})  #Change this in extracting_data.py
 
 data=data.drop_duplicates(subset=["angle","heat","field","emission","x_m"], keep=False)
 
-
-#For faster tuning of hyperparameters
+#For faster tuning of hyperparameters, takes every 500th element
 data=data.loc[data['x_m'].isin(data["x_m"].unique()[0::500]), :]
 
 target="Pot"

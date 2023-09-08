@@ -35,7 +35,7 @@ import xgboost as xgb
 import itertools
 from statistics import mean 
 
-data=pd.read_csv('df_data.csv')
+data=pd.read_csv('../df_data.csv')
 data=data.rename(columns={"x_[m]": "x_m"})  #Change this in extracting_data.py
 
 data=data.drop_duplicates(subset=["angle","heat","field","emission","x_m"], keep=False)
