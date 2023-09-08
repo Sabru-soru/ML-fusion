@@ -28,27 +28,27 @@ import xgboost as xgb
 import itertools
 from statistics import mean 
 
-data=pd.read_csv('df_data.csv')
+data=pd.read_csv('../df_data.csv')
 data=data.rename(columns={"x_[m]": "x_m"})  #Change this in extracting_data.py
 
 data=data.drop_duplicates(subset=["angle","heat","field","emission","x_m"], keep=False)
 
 
 #For faster tuning of hyperparameters
-data=data.loc[data['x_m'].isin(data["x_m"].unique()[0::500]), :]
+data=data.loc[data['x_m'].isin(data["x_m"].unique()[0::600]), :]
 
-target="Pot"
+target="Te"
 
 #%%HYPERPARAMETERS
 
 temp_target_df= pd.DataFrame(columns=["angle","heat","field","emission"], dtype='int8')
 hyper_params = {
     'learning_rate': [0.1,0.2,0.3],
-    'max_depth': [1,2],
+    'max_depth': [1,2,4],
     'min_child_weight': [1, 2, 3],
-    'subsample': [0.1, 0.2, 0.5, 0.6],
+    'subsample': [0.1, 0.5, 0.6],
     'colsample_bytree': [0.4, 0.6, 0.8],
-    'n_estimators' : [500, 600, 700, 800, 900, 1000]
+    'n_estimators' : [500, 600, 700, 900, 1000]
 }
 
 a = hyper_params.values()
@@ -134,7 +134,7 @@ for c in combinations:
 #%% EXPORT
 df=pd.DataFrame(values)
 sort_df=df.sort_values(["error"])
-df.to_csv('Tested_further_Pot.csv') 
+sort_df.to_csv('Tested_further_Te.csv') 
 
 best=df[df["error"]==df["error"].min()]
 print(best)
