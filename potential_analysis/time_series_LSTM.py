@@ -7,12 +7,9 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
-
-
-
-
+#%%
 # Load the data from the Excel file
-file_path = 'data_cleaned_interpreter.xlsx'
+file_path = 'data/data_cleaned_sparse.xlsx'
 df = pd.read_excel(file_path)
 
 # Drop the first column if it's an unnamed index column
@@ -64,12 +61,6 @@ plt.legend()
 plt.show()
 # %%
 
-
-
-
-
-
-
 # Identify unique combinations of 'angle', 'heat', 'field', and 'emission' to represent different curves
 unique_curves = df.drop_duplicates(subset=['angle', 'heat', 'field', 'emission'])
 
@@ -96,6 +87,9 @@ for _, row in unique_curves.iterrows():
     X_test = test_scaled.drop('Pot', axis=1)
     y_test = test_scaled['Pot']
 
+    #if y_test value is 0, chenge to 0.0001 to avoid inf
+    y_test = y_test.replace(0, 0.0001)
+
     # Reshape into 3D array for LSTM
     X_train = np.reshape(X_train.values, (X_train.shape[0], 1, X_train.shape[1]))
     X_test = np.reshape(X_test.values, (X_test.shape[0], 1, X_test.shape[1]))
@@ -118,6 +112,16 @@ for _, row in unique_curves.iterrows():
     mse_list.append(mse)
     mae_list.append(mae)
     mape_list.append(mape)
+
+    # Plot actual vs predicted
+    plt.figure(figsize=(15, 6))
+    plt.plot(y_test, label='True')
+    plt.plot(y_pred, label='Predicted')
+    plt.xlabel('Index')
+    plt.ylabel('Pot Value')
+    plt.title(f'Actual vs Predicted for Curve {angle}, {heat}, {field}, {emission}')
+    plt.legend()
+    plt.show()
 
 # Calculate average MSE, MAE, and MAPE
 average_mse = np.mean(mse_list)
