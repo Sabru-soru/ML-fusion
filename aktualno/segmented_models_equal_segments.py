@@ -20,26 +20,31 @@ prediction_parameter = 'Pot'
 df = df[['angle', 'heat', 'field', 'emission', 'x_m', prediction_parameter]]
 
 #%%
-# Sort the DataFrame by x_m values to find cutoff points
-df_sorted = df.sort_values(by='x_m')
-x_m_values = df_sorted['x_m'].values
+n_segments = 20
 
-# Calculate indices for the 5% and 95% cutoffs
-first_5_percent_index = int(len(x_m_values) * 0.05)
-last_5_percent_index = int(len(x_m_values) * 0.95)
+# Determine the range of x_m values
+x_m_min = df['x_m'].min()
+x_m_max = df['x_m'].max()
 
-# Get cutoff values for x_m
-first_5_percent_cutoff = x_m_values[first_5_percent_index]
-last_5_percent_cutoff = x_m_values[last_5_percent_index]
+# Calculate the segment size
+segment_size = (x_m_max - x_m_min) / n_segments
 
-# Split the DataFrame into three segments
-df_first_5 = df_sorted[df_sorted['x_m'] <= first_5_percent_cutoff]
-df_last_5 = df_sorted[df_sorted['x_m'] >= last_5_percent_cutoff]
-df_middle = df_sorted[(df_sorted['x_m'] > first_5_percent_cutoff) & (df_sorted['x_m'] < last_5_percent_cutoff)]
+# Dictionary to store models for each segment
+models = {}
 
-#%%
-# Define a function to train an XGBoost model
-def train_xgb_model(X, y):
+# Loop through each segment and filter data
+for segment in range(n_segments):
+    lower_bound = x_m_min + segment * segment_size
+    upper_bound = lower_bound + segment_size
+    
+    # Filter the dataset for the current segment
+    df_segment = df[(df['x_m'] >= lower_bound) & (df['x_m'] < upper_bound)]
+    
+    # Prepare the features and target for the segment
+    X_segment = df_segment[['angle', 'heat', 'field', 'emission', 'x_m']]
+    y_segment = df_segment[prediction_parameter]  # Replace 'target_column' with the name of your target column
+    
+    # Train the XGBoost model for the segment
     model = xgb.XGBRegressor(
         learning_rate=0.1,
         max_depth=3,
@@ -48,13 +53,10 @@ def train_xgb_model(X, y):
         n_estimators=300,
         objective='reg:squarederror'
     )
-    model.fit(X, y)
-    return model
-
-# Train a model for each segment
-model_first_5 = train_xgb_model(df_first_5[['angle', 'heat', 'field', 'emission', 'x_m']], df_first_5[prediction_parameter])
-model_last_5 = train_xgb_model(df_last_5[['angle', 'heat', 'field', 'emission', 'x_m']], df_last_5[prediction_parameter])
-model_middle = train_xgb_model(df_middle[['angle', 'heat', 'field', 'emission', 'x_m']], df_middle[prediction_parameter])
+    model.fit(X_segment, y_segment)
+    
+    # Store the model
+    models[segment] = model
 
 # %%
 "Make new graph"
@@ -70,24 +72,23 @@ new_data = pd.DataFrame({
     'x_m': unique_x_m
 })
 
-def predict_with_segmented_models(new_data):
-    predictions = []  # to store predictions for each row in new_data
-    for _, row in new_data.iterrows():
-        x_m = row['x_m']
-        # Select features for prediction
-        features = row[['angle', 'heat', 'field', 'emission', 'x_m']].values.reshape(1, -1)
-        # Determine which model to use based on x_m value
-        if x_m <= first_5_percent_cutoff:
-            prediction = model_first_5.predict(features)
-        elif x_m >= last_5_percent_cutoff:
-            prediction = model_last_5.predict(features)
-        else:
-            prediction = model_middle.predict(features)
-        predictions.append(prediction[0])  # Assuming prediction returns a list, take the first element
-    return predictions
+# Function to determine which segment an x_m value belongs to
+def get_segment_for_x_m(x_m, x_m_min, segment_size):
+    if x_m == x_m_max:  # Edge case where x_m is the maximum value
+        return (n_segments-1)  # The last segment
+    return int((x_m - x_m_min) / segment_size)
 
-# Use the function to make predictions for the new_data
-predicted_values = predict_with_segmented_models(new_data)
+# Predicting with the segmented models
+predicted_values = []
+
+for _, row in new_data.iterrows():
+    x_m = row['x_m']
+    segment = get_segment_for_x_m(x_m, x_m_min, segment_size)
+    model = models[segment]
+    # Make sure to reshape the row to the correct shape for prediction
+    features = row[['angle', 'heat', 'field', 'emission', 'x_m']].values.reshape(1, -1)
+    predicted_value = model.predict(features)
+    predicted_values.append(predicted_value[0])
 
 # Add the predicted values to the new_data DataFrame
 new_data['predicted'] = predicted_values
