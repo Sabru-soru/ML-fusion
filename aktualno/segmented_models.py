@@ -1,14 +1,11 @@
 #%%
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import xgboost as xgb
-from sklearn.metrics import mean_absolute_error
-import numpy as np
 from scipy.signal import savgol_filter
 import plotly.graph_objects as go
+from sklearn.metrics import mean_absolute_error
+import numpy as np
 
-# Load the data from the Excel file
 file_path = 'data/data_cleaned_sparse_all.xlsx'
 df = pd.read_excel(file_path)
 
@@ -26,17 +23,17 @@ df_sorted = df.sort_values(by='x_m')
 x_m_values = df_sorted['x_m'].values
 
 # Calculate indices for the 10% and 90% cutoffs
-first_5_percent_index = int(len(x_m_values) * 0.1)
-last_5_percent_index = int(len(x_m_values) * 0.9)
+first_segment_percent_index = int(len(x_m_values) * 0.1)
+last_segment_percent_index = int(len(x_m_values) * 0.9)
 
 # Get cutoff values for x_m
-first_5_percent_cutoff = x_m_values[first_5_percent_index]
-last_5_percent_cutoff = x_m_values[last_5_percent_index]
+first_segment_percent_cutoff = x_m_values[first_segment_percent_index]
+last_segment_percent_cutoff = x_m_values[last_segment_percent_index]
 
 # Split the DataFrame into three segments
-df_first_5 = df_sorted[df_sorted['x_m'] <= first_5_percent_cutoff]
-df_last_5 = df_sorted[df_sorted['x_m'] >= last_5_percent_cutoff]
-df_middle = df_sorted[(df_sorted['x_m'] > first_5_percent_cutoff) & (df_sorted['x_m'] < last_5_percent_cutoff)]
+df_first_segment = df_sorted[df_sorted['x_m'] <= first_segment_percent_cutoff]
+df_last_segment = df_sorted[df_sorted['x_m'] >= last_segment_percent_cutoff]
+df_middle = df_sorted[(df_sorted['x_m'] > first_segment_percent_cutoff) & (df_sorted['x_m'] < last_segment_percent_cutoff)]
 
 #%%
 # Define a function to train an XGBoost model
@@ -125,10 +122,10 @@ def train_xgb_model(X, y):
     model.fit(X, y)
     return model
 
+#%%
 # Train a model for each segment
-model_first_5 = train_xgb_model(df_first_5[['angle', 'heat', 'field', 'emission', 'x_m']], df_first_5[prediction_parameter])
-model_last_5 = train_xgb_model(df_last_5[['angle', 'heat', 'field', 'emission', 'x_m']], df_last_5[prediction_parameter])
-model_middle = train_xgb_model(df_middle[['angle', 'heat', 'field', 'emission', 'x_m']], df_middle[prediction_parameter])
+model_first_segment = train_xgb_model(df_first_segment[['angle', 'heat', 'field', 'emission', 'x_m']], df_first_segment[prediction_parameter])
+model_last_segment = train_xgb_model(df_last_segment[['angle', 'heat', 'field', 'emission', 'x_m']], df_last_segment[prediction_parameter])
 
 # %%
 "Make new graph"
@@ -144,6 +141,22 @@ new_data = pd.DataFrame({
     'x_m': unique_x_m
 })
 
+model_first_segment_max = df_first_segment['x_m'].max()
+#predict on model_first_segment_max with model_first_segment
+predict_first = model_first_segment.predict(new_data[new_data['x_m']==model_first_segment_max][['angle', 'heat', 'field', 'emission', 'x_m']])
+
+model_last_segment_min = df_last_segment['x_m'].min()
+#predict on model_last_segment_min with model_last_segment
+predict_last = model_last_segment.predict(new_data[new_data['x_m']==model_last_segment_min][['angle', 'heat', 'field', 'emission', 'x_m']])
+
+#append to df_middle
+df_middle = df_middle.append({'angle': 3, 'heat': 0.15, 'field': 3, 'emission': 0.9, 'x_m': model_first_segment_max, prediction_parameter: predict_first[0]}, ignore_index=True)
+# df_middle = df_middle.append({'angle': 3, 'heat': 0.15, 'field': 3, 'emission': 0.9, 'x_m': model_last_segment_min, prediction_parameter: predict_last[0]}, ignore_index=True)
+
+# Train a model for the middle segment
+model_middle = train_xgb_model(df_middle[['angle', 'heat', 'field', 'emission', 'x_m']], df_middle[prediction_parameter])
+
+
 def predict_with_segmented_models(new_data):
     predictions = []  # to store predictions for each row in new_data
     for _, row in new_data.iterrows():
@@ -151,10 +164,10 @@ def predict_with_segmented_models(new_data):
         # Select features for prediction
         features = row[['angle', 'heat', 'field', 'emission', 'x_m']].values.reshape(1, -1)
         # Determine which model to use based on x_m value
-        if x_m <= first_5_percent_cutoff:
-            prediction = model_first_5.predict(features)
-        elif x_m >= last_5_percent_cutoff:
-            prediction = model_last_5.predict(features)
+        if x_m <= first_segment_percent_cutoff:
+            prediction = model_first_segment.predict(features)
+        elif x_m >= last_segment_percent_cutoff:
+            prediction = model_last_segment.predict(features)
         else:
             prediction = model_middle.predict(features)
         predictions.append(prediction[0])  # Assuming prediction returns a list, take the first element
@@ -169,7 +182,7 @@ new_data['predicted'] = predicted_values
 
 # %%
 # smooth the predicted values
-new_data['predicted_smooth'] = savgol_filter(new_data['predicted'], 30, 3)
+new_data['predicted_smooth'] = savgol_filter(new_data['predicted'], 20, 3)
 
 #plot x_m and predicted values
 fig = go.Figure()
@@ -196,7 +209,7 @@ for index, row in unique_combinations.iterrows():
                              line=dict(dash='dash', width=2)))  # Semi-transparent and dashed lines
 
 # Adjust layout if necessary
-fig.update_layout(title='Predicted vs. Actual Data with Training Data',
+fig.update_layout(title=f'Predicted vs. Actual Data with Training Data. Parameter: {prediction_parameter}',
                   xaxis_title='x_m',
                   yaxis_title='Value',
                   legend_title='Traces')
@@ -204,4 +217,14 @@ fig.update_layout(title='Predicted vs. Actual Data with Training Data',
 fig.show()
 
 
+# %%
+#merge dataframes to get new_Ivona data with predicted Pot values
+merged = pd.merge(new_data, new_Ivona[['x_m', prediction_parameter]], on='x_m', how='left')
+
+merged = merged[merged[prediction_parameter]>10]
+
+mae = mean_absolute_error(merged[prediction_parameter], merged['predicted'])
+mape = np.mean(np.abs((merged[prediction_parameter] - merged['predicted']) / merged[prediction_parameter])) * 100
+print('Mean Absolute Error:', round(mae,2))
+print('Mean Absolute Percentage Error:', round(mape,2))
 # %%

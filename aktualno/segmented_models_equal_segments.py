@@ -10,16 +10,16 @@ import plotly.graph_objects as go
 
 # Load the data from the Excel file
 file_path = 'data/data_cleaned_sparse_all.xlsx'
-df = pd.read_excel(file_path)
+df_all = pd.read_excel(file_path)
 
 #load actual values
 file_path = 'data/new_output_fusion_sparse.xlsx'
 new_Ivona = pd.read_excel(file_path)
 #%%
+parameters = ['Pot','Tn','Te','Ti','Vi','Vn','nn','E','Ve']
 prediction_parameter = 'Pot'
-df = df[['angle', 'heat', 'field', 'emission', 'x_m', prediction_parameter]]
+df = df_all[['angle', 'heat', 'field', 'emission', 'x_m', prediction_parameter]].copy()
 
-#%%
 n_segments = 20
 
 # Determine the range of x_m values
@@ -45,20 +45,93 @@ for segment in range(n_segments):
     y_segment = df_segment[prediction_parameter]  # Replace 'target_column' with the name of your target column
     
     # Train the XGBoost model for the segment
-    model = xgb.XGBRegressor(
-        learning_rate=0.1,
-        max_depth=3,
-        subsample=1,
-        colsample_bytree=0.8,
-        n_estimators=300,
-        objective='reg:squarederror'
-    )
+    if prediction_parameter=='Pot':
+        model = xgb.XGBRegressor(
+            learning_rate=0.1,
+            max_depth=3,
+            subsample=1,
+            colsample_bytree=0.8,
+            n_estimators=300,
+            objective='reg:squarederror'  #Pot
+        )
+    elif prediction_parameter=='Tn':
+        model = xgb.XGBRegressor(
+            learning_rate=0.1,
+            max_depth=7,
+            subsample=1,
+            colsample_bytree=1,
+            n_estimators=300,
+            objective='reg:squarederror'  #Tn
+        )
+    elif prediction_parameter=='Te':
+        model = xgb.XGBRegressor(
+            learning_rate=0.3,
+            max_depth=7,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            n_estimators=1000,
+            objective='reg:squarederror'  #Te
+        )
+    elif prediction_parameter=='Ti':
+        model = xgb.XGBRegressor(
+            learning_rate=0.3,
+            max_depth=7,
+            subsample=1,
+            colsample_bytree=1,
+            n_estimators=1000,
+            objective='reg:squarederror'  #Ti
+        )
+    elif prediction_parameter=='Vi':
+        model = xgb.XGBRegressor(
+            learning_rate=0.3,
+            max_depth=3,
+            subsample=1,
+            colsample_bytree=0.8,
+            n_estimators=1000,
+            objective='reg:squarederror'  #Vi
+        )
+    elif prediction_parameter=='Vn':
+        model = xgb.XGBRegressor(
+            learning_rate=0.01,
+            max_depth=5,
+            subsample=1,
+            colsample_bytree=1,
+            n_estimators=600,
+            objective='reg:squarederror'  #Vn
+        )
+    elif prediction_parameter=='nn':
+        model = xgb.XGBRegressor(
+            learning_rate=0.1,
+            max_depth=7,
+            subsample=0.8,
+            colsample_bytree=1,
+            n_estimators=1000,
+            objective='reg:squarederror'  #nn
+        )
+    elif prediction_parameter=='E':
+        model = xgb.XGBRegressor(
+            learning_rate=0.01,
+            max_depth=3,
+            subsample=1,
+            colsample_bytree=1,
+            n_estimators=300,
+            objective='reg:squarederror'  #E
+        )
+    elif prediction_parameter=='Ve':
+        model = xgb.XGBRegressor(
+            learning_rate=0.1,
+            max_depth=7,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            n_estimators=1000,
+            objective='reg:squarederror'  #Ve
+        )
     model.fit(X_segment, y_segment)
     
     # Store the model
     models[segment] = model
 
-# %%
+
 "Make new graph"
 # Extract unique x_m values from the original dataset
 unique_x_m = df['x_m'].unique()
@@ -94,7 +167,7 @@ for _, row in new_data.iterrows():
 new_data['predicted'] = predicted_values
 
 
-# %%
+
 # smooth the predicted values
 new_data['predicted_smooth'] = savgol_filter(new_data['predicted'], 30, 3)
 
