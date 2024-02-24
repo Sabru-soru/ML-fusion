@@ -16,6 +16,7 @@ df = pd.read_excel(file_path)
 file_path = 'data/new_output_fusion_sparse.xlsx'
 new_Ivona = pd.read_excel(file_path)
 #%%
+parameters = ['Pot','Tn','Te','Ti','Vi','Vn','nn','E','Ve']
 prediction_parameter = 'Pot'
 df = df[['angle', 'heat', 'field', 'emission', 'x_m', prediction_parameter]]
 
@@ -24,9 +25,9 @@ df = df[['angle', 'heat', 'field', 'emission', 'x_m', prediction_parameter]]
 df_sorted = df.sort_values(by='x_m')
 x_m_values = df_sorted['x_m'].values
 
-# Calculate indices for the 5% and 95% cutoffs
-first_5_percent_index = int(len(x_m_values) * 0.05)
-last_5_percent_index = int(len(x_m_values) * 0.95)
+# Calculate indices for the 10% and 90% cutoffs
+first_5_percent_index = int(len(x_m_values) * 0.1)
+last_5_percent_index = int(len(x_m_values) * 0.9)
 
 # Get cutoff values for x_m
 first_5_percent_cutoff = x_m_values[first_5_percent_index]
@@ -40,14 +41,87 @@ df_middle = df_sorted[(df_sorted['x_m'] > first_5_percent_cutoff) & (df_sorted['
 #%%
 # Define a function to train an XGBoost model
 def train_xgb_model(X, y):
-    model = xgb.XGBRegressor(
-        learning_rate=0.1,
-        max_depth=3,
-        subsample=1,
-        colsample_bytree=0.8,
-        n_estimators=300,
-        objective='reg:squarederror'
-    )
+    if prediction_parameter=='Pot':
+        model = xgb.XGBRegressor(
+            learning_rate=0.1,
+            max_depth=3,
+            subsample=1,
+            colsample_bytree=0.8,
+            n_estimators=300,
+            objective='reg:squarederror'  #Pot
+        )
+    elif prediction_parameter=='Tn':
+        model = xgb.XGBRegressor(
+            learning_rate=0.1,
+            max_depth=7,
+            subsample=1,
+            colsample_bytree=1,
+            n_estimators=300,
+            objective='reg:squarederror'  #Tn
+        )
+    elif prediction_parameter=='Te':
+        model = xgb.XGBRegressor(
+            learning_rate=0.3,
+            max_depth=7,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            n_estimators=1000,
+            objective='reg:squarederror'  #Te
+        )
+    elif prediction_parameter=='Ti':
+        model = xgb.XGBRegressor(
+            learning_rate=0.3,
+            max_depth=7,
+            subsample=1,
+            colsample_bytree=1,
+            n_estimators=1000,
+            objective='reg:squarederror'  #Ti
+        )
+    elif prediction_parameter=='Vi':
+        model = xgb.XGBRegressor(
+            learning_rate=0.3,
+            max_depth=3,
+            subsample=1,
+            colsample_bytree=0.8,
+            n_estimators=1000,
+            objective='reg:squarederror'  #Vi
+        )
+    elif prediction_parameter=='Vn':
+        model = xgb.XGBRegressor(
+            learning_rate=0.01,
+            max_depth=5,
+            subsample=1,
+            colsample_bytree=1,
+            n_estimators=600,
+            objective='reg:squarederror'  #Vn
+        )
+    elif prediction_parameter=='nn':
+        model = xgb.XGBRegressor(
+            learning_rate=0.1,
+            max_depth=7,
+            subsample=0.8,
+            colsample_bytree=1,
+            n_estimators=1000,
+            objective='reg:squarederror'  #nn
+        )
+    elif prediction_parameter=='E':
+        model = xgb.XGBRegressor(
+            learning_rate=0.01,
+            max_depth=3,
+            subsample=1,
+            colsample_bytree=1,
+            n_estimators=300,
+            objective='reg:squarederror'  #E
+        )
+    elif prediction_parameter=='Ve':
+        model = xgb.XGBRegressor(
+            learning_rate=0.1,
+            max_depth=7,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            n_estimators=1000,
+            objective='reg:squarederror'  #Ve
+        )
     model.fit(X, y)
     return model
 
@@ -129,7 +203,5 @@ fig.update_layout(title='Predicted vs. Actual Data with Training Data',
 
 fig.show()
 
-
-# %%
 
 # %%
