@@ -1,65 +1,154 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sat Nov 26 19:07:04 2022
-
 @author: urosu
 """
-
 import pandas as pd
-import time
 import numpy as np
+import time
 
-start_time = time.time()
-"load file"
-df1 = pd.read_excel('data/output_fusion.xlsx', sheet_name='1.5 degree')
-df2 = pd.read_excel('data/output_fusion.xlsx', sheet_name='4 degree')
-df3 = pd.read_excel('data/output_fusion.xlsx', sheet_name='6 degree')
+class DataExtractor:
+    """
+    A class used to extract data from an Excel file and transform it into a specific format.
 
-#%%
-df = pd.DataFrame()
-angle=[6,6,6,6,6,6,6,4,4,4,4,4,4,4,1.5,1.5,1.5,1.5,1.5,1.5,1.5]
-heat=[0,0.1,0.2,0,0,0,0,0,0.1,0.2,0,0,0,0,0,0.1,0.2,0,0,0,0]
-field=[2.2,2.2,2.2,1,4,2.2,2.2,2.2,2.2,2.2,1,4,2.2,2.2,2.2,2.2,2.2,1,4,2.2,2.2]
-emission=[0.8,0.8,0.8,0.8,0.8,0,1,0.8,0.8,0.8,0.8,0.8,0,1,0.8,0.8,0.8,0.8,0.8,0,1]
+    ...
 
-df = pd.DataFrame(angle, columns=['angle'])
-df['heat'] = heat
-df['field'] = field
-df['emission'] = emission
-#%%
-#Takes the length of the wall. Error in input data - need to mutiply by 10
-length_tokamak=pd.DataFrame(df1["x  (m)"]*10)
+    Attributes
+    ----------
+    file_path : str
+        a formatted string to print out the file_path
+    df1 : DataFrame
+        a pandas DataFrame containing the data from the '1.5 degree' sheet
+    df2 : DataFrame
+        a pandas DataFrame containing the data from the '4 degree' sheet
+    df3 : DataFrame
+        a pandas DataFrame containing the data from the '6 degree' sheet
 
-df=pd.concat([df]*len(length_tokamak), ignore_index=True) # Ignores the index
+    Methods
+    -------
+    create_initial_dataframe()
+        Creates an initial DataFrame with predefined values for 'angle', 'heat', 'field', and 'emission'.
+    add_length_tokamak(df)
+        Adds the 'x_[m]' column to the DataFrame based on the 'x  (m)' column in df1.
+    add_target(target, df)
+        Adds a target column to the DataFrame based on the target parameter.
+    add_all_targets(df)
+        Adds all target columns to the DataFrame.
+    save_data(df, output_file)
+        Saves the DataFrame to a CSV file.
+    """
+    def __init__(self, file_path):
+        """
+        Constructs all the necessary attributes for the DataExtractor object.
 
-#Add the column 
-length_tokamak=pd.DataFrame(np.repeat(length_tokamak.values, 21, axis=0))
-df.loc[:,"x_[m]"]=length_tokamak
+        Parameters
+        ----------
+            file_path : str
+                file path of the Excel file
+        """
+        self.file_path = file_path
+        self.df1 = pd.read_excel(self.file_path, sheet_name='1.5 degree')
+        self.df2 = pd.read_excel(self.file_path, sheet_name='4 degree')
+        self.df3 = pd.read_excel(self.file_path, sheet_name='6 degree')
 
-#%%
-#Add the target values
-target=['ne','ni','nn','Te','Ti','Tn','Ve','Vi','Vn','E','Pot']
+    def create_initial_dataframe(self):
+        """
+        Creates an initial DataFrame with predefined values for 'angle', 'heat', 'field', and 'emission'.
+        
+        Returns
+        -------
+            df : DataFrame
+                A DataFrame with columns 'angle', 'heat', 'field', 'emission' and predefined values.
+        """
+        angle = [6]*7 + [4]*7 + [1.5]*7
+        heat = [0, 0.1, 0.2] + [0]*4 + [0, 0.1, 0.2] + [0]*4 + [0, 0.1, 0.2] + [0]*4
+        field = [2.2]*3 + [1, 4] + [2.2]*5 + [1, 4] + [2.2]*5 + [1, 4] + [2.2]*2
+        emission = [0.8]*5 + [0, 1] + [0.8]*5 + [0, 1] + [0.8]*5 + [0, 1]
 
-def add_target(target,df):
-    target_list=[df3[f'{target}'],df3[f'{target} (heat 0.1)'],df3[f'{target} (heat 0.2)'],df3[f'{target} (1 T)'],df3[f'{target} (4 T)'],df3[f'{target} (recycling 0)'],df3[f'{target} (recycling 1)'],
-        df2[f'{target}'],df2[f'{target} (heat 0.1)'],df2[f'{target} (heat 0.2)'],df2[f'{target} (1 T)'],df2[f'{target} (4 T)'],df2[f'{target} (recycling 0)'],df2[f'{target} (recycling 1)'],
-        df1[f'{target}'],df1[f'{target} (heat 0.1)'],df1[f'{target} (heat 0.2)'],df1[f'{target} (1 T)'],df1[f'{target} (4 T)'],df1[f'{target} (recycling 0)'],df1[f'{target} (recycling 1)']]
-    
-    
-    df_target=pd.DataFrame(target_list)
-    df_target=df_target.reset_index(level=0)
-    df_target=pd.melt(df_target, id_vars='index')
-    #Add
-    df.loc[:,f'{target}']=df_target["value"]
-    return df
+        df = pd.DataFrame(list(zip(angle, heat, field, emission)), columns=['angle', 'heat', 'field', 'emission'])
+        return df
 
-for target in target:
-    df=add_target(target,df)
+    def add_length_tokamak(self, df):
+        """
+        Adds the 'x_[m]' column to the DataFrame based on the 'x  (m)' column in df1.
 
-#%%
-intermediate_time = time.time()
-print('Čas za branje je: ',intermediate_time - start_time)
+        Parameters
+        ----------
+            df : DataFrame
+                The DataFrame to which the 'x_[m]' column will be added.
 
-#%%
-#Save the data
-df.to_csv('df_data.csv',index=False)
+        Returns
+        -------
+            df : DataFrame
+                The DataFrame with the added 'x_[m]' column.
+        """
+        length_tokamak = pd.DataFrame(self.df1["x  (m)"]*10)
+        df = pd.concat([df]*len(length_tokamak), ignore_index=True)
+        length_tokamak = pd.DataFrame(np.repeat(length_tokamak.values, 21, axis=0))
+        df.loc[:,"x_[m]"] = length_tokamak
+        return df
+
+    def add_target(self, target, df):
+        """
+        Adds a target column to the DataFrame based on the target parameter.
+
+        Parameters
+        ----------
+            target : str
+                The name of the target column to add.
+            df : DataFrame
+                The DataFrame to which the target column will be added.
+
+        Returns
+        -------
+            df : DataFrame
+                The DataFrame with the added target column.
+        """
+        target_list = [self.df3[f'{target}'], self.df3[f'{target} (heat 0.1)'], self.df3[f'{target} (heat 0.2)'], self.df3[f'{target} (1 T)'], self.df3[f'{target} (4 T)'], self.df3[f'{target} (recycling 0)'], self.df3[f'{target} (recycling 1)'],
+                       self.df2[f'{target}'], self.df2[f'{target} (heat 0.1)'], self.df2[f'{target} (heat 0.2)'], self.df2[f'{target} (1 T)'], self.df2[f'{target} (4 T)'], self.df2[f'{target} (recycling 0)'], self.df2[f'{target} (recycling 1)'],
+                       self.df1[f'{target}'], self.df1[f'{target} (heat 0.1)'], self.df1[f'{target} (heat 0.2)'], self.df1[f'{target} (1 T)'], self.df1[f'{target} (4 T)'], self.df1[f'{target} (recycling 0)'], self.df1[f'{target} (recycling 1)']]
+
+        df_target = pd.DataFrame(target_list)
+        df_target = df_target.reset_index(level=0)
+        df_target = pd.melt(df_target, id_vars='index')
+        df.loc[:,f'{target}'] = df_target["value"]
+        return df
+
+    def add_all_targets(self, df):
+        """
+        Adds all target columns to the DataFrame.
+
+        Parameters
+        ----------
+            df : DataFrame
+                The DataFrame to which the target columns will be added.
+
+        Returns
+        -------
+            df : DataFrame
+                The DataFrame with the added target columns.
+        """
+        targets = ['ne','ni','nn','Te','Ti','Tn','Ve','Vi','Vn','E','Pot']
+        for target in targets:
+            df = self.add_target(target, df)
+        return df
+
+    def save_data(self, df, output_file):
+        """
+        Saves the DataFrame to a pickle file.
+
+        Parameters
+        ----------
+            df : DataFrame
+                The DataFrame to save.
+            output_file : str
+                The file path of the output pickle file.
+        """
+        df.to_pickle(output_file)
+
+if __name__ == "__main__":
+    start_time = time.time()
+    extractor = DataExtractor('data/output_fusion.xlsx')
+    df = extractor.create_initial_dataframe()
+    df = extractor.add_length_tokamak(df)
+    df = extractor.add_all_targets(df)
+    extractor.save_data(df, 'df_data.pkl')
+    print('Execution time: ', time.time() - start_time)
