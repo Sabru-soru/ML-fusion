@@ -1,7 +1,7 @@
 import pandas as pd
 import plotly.graph_objects as go
 
-class DataProcessor:
+class DataExplorer:
     """
     A class used to process and visualize data.
 
@@ -35,7 +35,7 @@ class DataProcessor:
     """
 
     def __init__(self, data_path, prediction_parameter):
-        """Initializes DataProcessor with the data path and prediction parameter."""
+        """Initializes DataExplorer with the data path and prediction parameter."""
         self.data_path = data_path
         self.prediction_parameter = prediction_parameter
         self.df = None
@@ -99,10 +99,10 @@ class DataProcessor:
 
 
 if __name__ == "__main__":
-    processor = DataProcessor('data/df_data.pkl', prediction_parameter='Pot')
-    processor.load_data()
-    processor.process_new_simulation('data/new_output_fusion.xlsx')
-    processor.generate_plot()
-    processor.show_plot()
-    processor.save_plot("fig/actual_data.html")
-    print(processor.describe_data())
+    explorer = DataExplorer('data/df_data.pkl', prediction_parameter='Pot')
+    explorer.load_data()
+    explorer.process_new_simulation('data/new_output_fusion.xlsx')
+    explorer.generate_plot()
+    explorer.show_plot()
+    explorer.save_plot("fig/actual_data.html")
+    print(explorer.describe_data())
