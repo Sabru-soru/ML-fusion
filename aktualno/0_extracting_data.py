@@ -7,9 +7,7 @@ import time
 
 class DataExtractor:
     """
-    A class used to extract data from an Excel file and transform it into a specific format.
-
-    ...
+    A class used to extract data from an Excel file and transform it into a DataFrame.
 
     Attributes
     ----------
@@ -33,7 +31,7 @@ class DataExtractor:
     add_all_targets(df)
         Adds all target columns to the DataFrame.
     save_data(df, output_file)
-        Saves the DataFrame to a CSV file.
+        Saves the DataFrame to a pickle file.
     """
     def __init__(self, file_path):
         """
