@@ -66,22 +66,22 @@ class DataExtractor:
 
     def add_length_tokamak(self, df):
         """
-        Adds the 'x_[m]' column to the DataFrame based on the 'x  (m)' column in df1.
+        Adds the 'x_m' column to the DataFrame based on the 'x  (m)' column in df1.
 
         Parameters
         ----------
             df : DataFrame
-                The DataFrame to which the 'x_[m]' column will be added.
+                The DataFrame to which the 'x_m' column will be added.
 
         Returns
         -------
             df : DataFrame
-                The DataFrame with the added 'x_[m]' column.
+                The DataFrame with the added 'x_m' column.
         """
-        length_tokamak = pd.DataFrame(self.df1["x  (m)"]*10)
+        length_tokamak = pd.DataFrame(self.df1["x  (m)"]*10) #Takes the length of the wall. Error in input data - need to mutiply by 10
         df = pd.concat([df]*len(length_tokamak), ignore_index=True)
         length_tokamak = pd.DataFrame(np.repeat(length_tokamak.values, 21, axis=0))
-        df.loc[:,"x_[m]"] = length_tokamak
+        df.loc[:,"x_m"] = length_tokamak
         return df
 
     def add_target(self, target, df):
@@ -129,9 +129,11 @@ class DataExtractor:
             df = self.add_target(target, df)
         return df
 
-    def save_data(self, df, output_file):
+    def save_sparse_data(self, df, output_file, sparsity=200):
         """
-        Saves the DataFrame to a pickle file.
+        Saves a sparsified version of the DataFrame to a pickle file.
+
+        The DataFrame is sparsified by selecting every nth unique value of the 'x_m' column, where n is the sparsity.
 
         Parameters
         ----------
@@ -139,8 +141,11 @@ class DataExtractor:
                 The DataFrame to save.
             output_file : str
                 The file path of the output pickle file.
+            sparsity : int, optional
+                The sparsity of the data. Every nth unique value of the 'x_m' column is selected, where n is the sparsity. By default, 200.
         """
-        df.to_pickle(output_file)
+        df_sparse = df.loc[df['x_m'].isin(df['x_m'].unique()[::sparsity]), :]
+        df_sparse.to_pickle(output_file)
 
 if __name__ == "__main__":
     start_time = time.time()
@@ -148,5 +153,5 @@ if __name__ == "__main__":
     df = extractor.create_initial_dataframe()
     df = extractor.add_length_tokamak(df)
     df = extractor.add_all_targets(df)
-    extractor.save_data(df, 'df_data.pkl')
+    extractor.save_sparse_data(df, 'data/df_data.pkl', sparsity=200)
     print('Execution time: ', time.time() - start_time)
