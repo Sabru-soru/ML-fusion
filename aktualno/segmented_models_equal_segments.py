@@ -8,17 +8,13 @@ import numpy as np
 from scipy.signal import savgol_filter
 import plotly.graph_objects as go
 
-# Load the data from the Excel file
-file_path = 'data/data_cleaned_sparse_all.xlsx'
-df_all = pd.read_excel(file_path)
+df = pd.read_pickle('data/df_data.pkl')
 
-#load actual values
-file_path = 'data/new_output_fusion_sparse.xlsx'
-new_Ivona = pd.read_excel(file_path)
+new_fusion_data = pd.read_pickle('data/new_output_fusion_sparse.pkl')
 #%%
 parameters = ['Pot','Tn','Te','Ti','Vi','Vn','nn','E','Ve']
 prediction_parameter = 'Pot'
-df = df_all[['angle', 'heat', 'field', 'emission', 'x_m', prediction_parameter]].copy()
+df = df[['angle', 'heat', 'field', 'emission', 'x_m', prediction_parameter]].copy()
 
 n_segments = 20
 
@@ -175,7 +171,7 @@ new_data['predicted_smooth'] = savgol_filter(new_data['predicted'], 30, 3)
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=new_data['x_m'], y=new_data['predicted'], mode='lines', name='Predicted'))
 fig.add_trace(go.Scatter(x=new_data['x_m'], y=new_data['predicted_smooth'], mode='lines', name='Predicted Smooth'))
-fig.add_trace(go.Scatter(x=new_Ivona['x_m'], y=new_Ivona[prediction_parameter], mode='lines', name='Actual'))
+fig.add_trace(go.Scatter(x=new_fusion_data['x_m'], y=new_fusion_data[prediction_parameter], mode='lines', name='Actual'))
 
 
 # Iterate through each unique combination of parameters
