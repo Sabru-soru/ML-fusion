@@ -66,10 +66,13 @@ class DataExplorer:
         self.fig = go.Figure()
 
         for index, row in unique_combinations.iterrows():
-            subset = self.df[(self.df['angle'] == row['angle']) & 
-                            (self.df['heat'] == row['heat']) & 
-                            (self.df['field'] == row['field']) & 
-                            (self.df['emission'] == row['emission'])]
+            subset = self.df[
+                (self.df['angle'] == row['angle']) &
+                (self.df['heat'] == row['heat']) &
+                (self.df['field'] == row['field']) &
+                (self.df['emission'] == row['emission'])
+            ]
+
 
             if (row['angle'] == 6 and row['field'] == 2.2 and 
                 row['heat'] == 0 and row['emission'] == 0.8):
@@ -87,24 +90,12 @@ class DataExplorer:
             ))
 
         self.fig.update_layout(
+            template='plotly_white',
             title=f'Actual Data. Parameter: {self.prediction_parameter}',
             xaxis_title='x [m]',
             yaxis_title='Value',
             legend_title='angle, heat, field, emission',
-            plot_bgcolor='white',
-            # paper_bgcolor='white',
-            xaxis=dict(
-                showgrid=True,
-                gridcolor='black',
-                gridwidth=1,
-                griddash='dash'
-            ),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='black',
-                gridwidth=1,
-                griddash='dash'
-            )
+            font=dict(color='black'),
         )
 
     def describe_data(self):
