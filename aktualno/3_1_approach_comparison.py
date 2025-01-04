@@ -53,6 +53,11 @@ class PermutationImportanceAnalyzer:
         }).sort_values('Importance_Mean', ascending=False)
     
     def plot_importance(self):
+
+        plt.rcParams.update({
+            'font.family': 'serif'
+        })
+        
         sns.set_style("whitegrid")
         plt.figure(figsize=(10, 6))
         sns.barplot(
@@ -61,11 +66,11 @@ class PermutationImportanceAnalyzer:
             data=self.perm_df,
             xerr=self.perm_df['Importance_Std'],
             orient='h',
-            palette='viridis'
+            color='grey'
         )
-        plt.title('Permutation Feature Importances', fontsize=16)
-        plt.xlabel('Mean Decrease in MAE', fontsize=14)
-        plt.ylabel('Feature', fontsize=14)
+        plt.title('Permutation Feature Importances')
+        plt.xlabel('Mean Decrease in MAE')
+        plt.ylabel('Feature')
         plt.tight_layout()
         plt.show()
 
@@ -87,9 +92,9 @@ class Plotter:
         plt.plot(x_m, actual, label=f'Actual {prediction_parameter}', linewidth=3)
         for label, predicted in predicted_dict.items():
             plt.plot(x_m, predicted, label=label, linestyle='--', linewidth=2)
-        plt.xlabel('x_m [m]', fontsize=14)
-        plt.ylabel(prediction_parameter, fontsize=14)
-        plt.title(f'Actual vs Predicted {prediction_parameter}', fontsize=16)
+        plt.xlabel('x_m [m]')
+        plt.ylabel(prediction_parameter)
+        plt.title(f'Actual vs Predicted {prediction_parameter}')
         plt.legend(fontsize=12)
         plt.grid(True)
         plt.tight_layout()
@@ -229,9 +234,9 @@ def main():
     # Plotting
     plotter = Plotter()
     predicted_dict = {
-        f'Predicted {prediction_parameter}': single_model_results_smoothed,
-        f'Predicted {prediction_parameter} XGB Simple': predicted_simple,
-        f'Predicted {prediction_parameter} Separate x_m': list(predictions_separate_xm.values())
+        f'Main Model - {prediction_parameter}': single_model_results_smoothed,
+        f'Simple Model - {prediction_parameter} ': predicted_simple,
+        f'Separate x_m - {prediction_parameter} ': list(predictions_separate_xm.values())
     }
     plotter.plot_comparison(
         new_fusion_data['x_m'],
@@ -239,6 +244,8 @@ def main():
         predicted_dict,
         prediction_parameter
     )
+
+    print("Done!")
 
 if __name__ == "__main__":
     main()
