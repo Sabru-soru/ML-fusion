@@ -67,31 +67,45 @@ class DataExplorer:
 
         for index, row in unique_combinations.iterrows():
             subset = self.df[(self.df['angle'] == row['angle']) & 
-                             (self.df['heat'] == row['heat']) & 
-                             (self.df['field'] == row['field']) & 
-                             (self.df['emission'] == row['emission'])]
-            self.fig.add_trace(go.Scatter(x=subset['x_m'], y=subset[self.prediction_parameter],
-                                          mode='lines', name=f'Params: {row["angle"]}, {row["heat"]}, {row["field"]}, {row["emission"]}',
-                                          opacity=0.7,
-                                          line=dict(dash='dash', width=2)))
+                            (self.df['heat'] == row['heat']) & 
+                            (self.df['field'] == row['field']) & 
+                            (self.df['emission'] == row['emission'])]
 
-        self.fig.update_layout(title=f'Actual Data. Parameter: {self.prediction_parameter}',
-                               xaxis_title='x [m]',
-                               yaxis_title='Value',
-                               legend_title='Traces, angle, heat, field, emission')
+            if (row['angle'] == 6 and row['field'] == 2.2 and 
+                row['heat'] == 0 and row['emission'] == 0.8):
+                line_style = dict(color='black', width=4)
+            else:
+                line_style = dict(dash='dash', width=2)
 
-    def show_plot(self):
-        """Displays the plot."""
-        self.fig.show()
+            self.fig.add_trace(go.Scatter(
+                x=subset['x_m'], 
+                y=subset[self.prediction_parameter],
+                mode='lines', 
+                name=f'Params: {row["angle"]}, {row["heat"]}, {row["field"]}, {row["emission"]}',
+                opacity=0.7,
+                line=line_style
+            ))
 
-    def save_plot(self, file_path):
-        """
-        Saves the plot to the specified file.
-
-        Parameters:
-            file_path (str): The path of the file to save the plot to.
-        """
-        self.fig.write_html(file_path)
+        self.fig.update_layout(
+            title=f'Actual Data. Parameter: {self.prediction_parameter}',
+            xaxis_title='x [m]',
+            yaxis_title='Value',
+            legend_title='angle, heat, field, emission',
+            plot_bgcolor='white',
+            # paper_bgcolor='white',
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='black',
+                gridwidth=1,
+                griddash='dash'
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='black',
+                gridwidth=1,
+                griddash='dash'
+            )
+        )
 
     def describe_data(self):
         """Returns a statistical description of the data."""
@@ -103,6 +117,6 @@ if __name__ == "__main__":
     explorer.load_data()
     explorer.process_new_simulation('data/new_output_fusion.xlsx')
     explorer.generate_plot()
-    explorer.show_plot()
-    explorer.save_plot("fig/actual_data.html")
+    # explorer.fig.show()
+    explorer.fig.write_html("fig/actual_data.html", auto_open=True)
     print(explorer.describe_data())
