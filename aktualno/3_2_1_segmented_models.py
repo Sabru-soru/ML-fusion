@@ -20,7 +20,6 @@ class DataProcessor:
         self.last_cutoff = None
 
     def split_data_segments(self):
-
         df_sorted = self.data.sort_values(by='x_m')
         x_m_values = df_sorted['x_m'].values
 
@@ -35,7 +34,10 @@ class DataProcessor:
         # Split the DataFrame into three segments
         self.first_segment = df_sorted[df_sorted['x_m'] <= self.first_cutoff]
         self.last_segment = df_sorted[df_sorted['x_m'] >= self.last_cutoff]
-        self.middle_segment = df_sorted[(df_sorted['x_m'] > self.first_cutoff) & (df_sorted['x_m'] < self.last_cutoff)]
+        self.middle_segment = df_sorted[
+            (df_sorted['x_m'] > self.first_cutoff) &
+            (df_sorted['x_m'] < self.last_cutoff)
+        ]
 
 class ModelTrainer:
     def __init__(self, prediction_parameter):
@@ -82,7 +84,8 @@ class ModelTrainer:
             data_processor.last_segment[data_processor.prediction_parameter]
         )
 
-    def train_middle_model(self, data_processor, predict_first, predict_last, model_first_segment_max, model_last_segment_min):
+    def train_middle_model(self, data_processor, predict_first, predict_last,
+                           model_first_segment_max, model_last_segment_min):
         # Append predictions to the middle segment
         data_processor.middle_segment = data_processor.middle_segment.append(
             {
@@ -132,23 +135,62 @@ class Evaluator:
 
 class Plotter:
     @staticmethod
-    def plot_results(new_data, fusion_data, prediction_parameter):
+    def plot_results(new_data, fusion_data, prediction_parameter,
+                     first_cutoff, last_cutoff):
         fig = go.Figure()
+
+        # Dashed black lines for predicted
+        # fig.add_trace(go.Scatter(
+        #     x=new_data['x_m'],
+        #     y=new_data['predicted'],
+        #     mode='lines',
+        #     name='Predicted',
+        #     line=dict(dash='dash', width=2)
+        # ))
         fig.add_trace(go.Scatter(
-            x=new_data['x_m'], y=new_data['predicted'], mode='lines', name='Predicted', line=dict(dash='dash')))
+            x=new_data['x_m'],
+            y=new_data['predicted_smooth'],
+            mode='lines',
+            name='Segmented prediction',
+            line=dict(dash='dash', width=2)
+        ))
+
+        # actual data
         fig.add_trace(go.Scatter(
-            x=new_data['x_m'], y=new_data['predicted_smooth'], mode='lines', name='Predicted Smooth', line=dict(dash='dash')))
-        fig.add_trace(go.Scatter(
-            x=fusion_data['x_m'], y=fusion_data[prediction_parameter], mode='lines', name='Actual'))
+            x=fusion_data['x_m'],
+            y=fusion_data[prediction_parameter],
+            mode='lines',
+            name='Actual',
+            line=dict(color='black', width=3)
+        ))
 
         fig.update_layout(
+            template='plotly_white',
             title=f'Predicted vs. Actual Data. Parameter: {prediction_parameter}',
             xaxis_title='x_m [m]',
-            yaxis_title='[V]',
-            legend_title='Traces'
+            yaxis_title='Parameter value',
+            legend_title='Traces',
+            font=dict(color='black')
         )
-        fig.show()
 
+        fig.add_shape(
+            type='line',
+            xref='x', yref='paper',
+            x0=first_cutoff, x1=first_cutoff,
+            y0=0, y1=1,
+            line=dict(color='black', dash='dash', width=2),
+            name='Segment line'
+        )
+        fig.add_shape(
+            type='line',
+            xref='x', yref='paper',
+            x0=last_cutoff, x1=last_cutoff,
+            y0=0, y1=1,
+            line=dict(color='black', dash='dash', width=2),
+            name='Segment line'
+        )
+
+        fig.write_html("fig/segmented_approach.html", auto_open=True)
 
 def main():
     data_processor = DataProcessor(
@@ -194,13 +236,30 @@ def main():
     # Smooth the predicted values
     new_data['predicted_smooth'] = savgol_filter(new_data['predicted'], 20, 3)
 
-    Plotter.plot_results(new_data, data_processor.fusion_data, data_processor.prediction_parameter)
+    # Pass the cutoffs to plot_results to draw vertical lines
+    Plotter.plot_results(
+        new_data,
+        data_processor.fusion_data,
+        data_processor.prediction_parameter,
+        data_processor.first_cutoff,
+        data_processor.last_cutoff
+    )
 
     # evaluation
-    merged = pd.merge(new_data, data_processor.fusion_data[['x_m', data_processor.prediction_parameter]], on='x_m', how='left')
+    merged = pd.merge(
+        new_data,
+        data_processor.fusion_data[['x_m', data_processor.prediction_parameter]],
+        on='x_m', how='left'
+    )
     merged = merged[merged[data_processor.prediction_parameter] > 10]
-    mae = Evaluator.calculate_mae(merged[data_processor.prediction_parameter], merged['predicted'])
-    mape = Evaluator.calculate_mape(merged[data_processor.prediction_parameter], merged['predicted'])
+    mae = Evaluator.calculate_mae(
+        merged[data_processor.prediction_parameter],
+        merged['predicted']
+    )
+    mape = Evaluator.calculate_mape(
+        merged[data_processor.prediction_parameter],
+        merged['predicted']
+    )
     print('Mean Absolute Error:', round(mae, 2))
     print('Mean Absolute Percentage Error:', round(mape, 2), '%')
 
