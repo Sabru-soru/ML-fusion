@@ -68,13 +68,14 @@ class ModelTrainer:
         return param_dict.get(self.prediction_parameter, {})
 
     def train_model(self, X, y):
+        """Train a single XGBoost model with the relevant hyperparameters."""
         params = self.get_model_params()
         model = xgb.XGBRegressor(objective='reg:squarederror', **params)
         model.fit(X, y)
         return model
 
     def train_segment_models(self, data_processor):
-        # Train models for the first and last segments
+        """Train the 'first' and 'last' models on their respective segments."""
         self.models['first'] = self.train_model(
             data_processor.first_segment[['angle', 'heat', 'field', 'emission', 'x_m']],
             data_processor.first_segment[data_processor.prediction_parameter]
@@ -86,7 +87,10 @@ class ModelTrainer:
 
     def train_middle_model(self, data_processor, predict_first, predict_last,
                            model_first_segment_max, model_last_segment_min):
-        # Append predictions to the middle segment
+        """
+        Append the boundary predictions to the middle segment, then train a 'middle' model.
+        This ensures continuity at the segment boundaries.
+        """
         data_processor.middle_segment = data_processor.middle_segment.append(
             {
                 'angle': 3,
@@ -107,13 +111,14 @@ class ModelTrainer:
                 data_processor.prediction_parameter: predict_last
             }, ignore_index=True
         )
-        # Train model for the middle segment
+
         self.models['middle'] = self.train_model(
             data_processor.middle_segment[['angle', 'heat', 'field', 'emission', 'x_m']],
             data_processor.middle_segment[data_processor.prediction_parameter]
         )
 
     def predict(self, row, data_processor):
+        """Use the appropriate segment model based on x_m."""
         x_m = row['x_m']
         features = row[['angle', 'heat', 'field', 'emission', 'x_m']].values.reshape(1, -1)
         if x_m <= data_processor.first_cutoff:
@@ -136,26 +141,18 @@ class Evaluator:
 class Plotter:
     @staticmethod
     def plot_results(new_data, fusion_data, prediction_parameter,
-                     first_cutoff, last_cutoff):
+                     first_cutoff, last_cutoff,
+                     single_model_y=None):
+        """
+        Plots:
+          - Segment-based prediction (red dashed),
+          - Single-model prediction (blue dashed, if provided),
+          - Actual data (solid black line),
+          - Two dashed vertical lines indicating segment boundaries.
+        """
         fig = go.Figure()
 
-        # Dashed black lines for predicted
-        # fig.add_trace(go.Scatter(
-        #     x=new_data['x_m'],
-        #     y=new_data['predicted'],
-        #     mode='lines',
-        #     name='Predicted',
-        #     line=dict(dash='dash', width=2)
-        # ))
-        fig.add_trace(go.Scatter(
-            x=new_data['x_m'],
-            y=new_data['predicted_smooth'],
-            mode='lines',
-            name='Segmented prediction',
-            line=dict(dash='dash', width=2)
-        ))
-
-        # actual data
+        # Actual data
         fig.add_trace(go.Scatter(
             x=fusion_data['x_m'],
             y=fusion_data[prediction_parameter],
@@ -164,13 +161,39 @@ class Plotter:
             line=dict(color='black', width=3)
         ))
 
+        # Segmented prediction
+        fig.add_trace(go.Scatter(
+            x=new_data['x_m'],
+            y=new_data['predicted_smooth'],
+            mode='lines',
+            name='Segmented prediction',
+            line=dict(dash='dash', width=2, color='red')
+        ))
+
+        # If a single-model array
+        if single_model_y is not None:
+            fig.add_trace(go.Scatter(
+                x=new_data['x_m'],
+                y=single_model_y,
+                mode='lines',
+                name='Single-model prediction (Main Model)',
+                line=dict(dash='dash', width=2, color='blue')
+            ))
+        
         fig.update_layout(
             template='plotly_white',
             title=f'Predicted vs. Actual Data. Parameter: {prediction_parameter}',
             xaxis_title='x_m [m]',
             yaxis_title='Parameter value',
             legend_title='Traces',
-            font=dict(color='black')
+            font=dict(color='black'),
+            legend=dict(
+                orientation='h',
+                yanchor='top',
+                y=-0.2,
+                xanchor='center',
+                x=0.5
+            )
         )
 
         fig.add_shape(
@@ -204,7 +227,7 @@ def main():
     model_trainer = ModelTrainer(prediction_parameter='Pot')
     model_trainer.train_segment_models(data_processor)
 
-    # Create new data for prediction
+    # Create new data for prediction (same x_m range, but fixed angles, heat, etc.)
     new_data = pd.DataFrame({
         'angle': 3,
         'heat': 0.15,
@@ -225,10 +248,11 @@ def main():
 
     # Train middle segment model
     model_trainer.train_middle_model(
-        data_processor, predict_first, predict_last, model_first_segment_max, model_last_segment_min
+        data_processor, predict_first, predict_last,
+        model_first_segment_max, model_last_segment_min
     )
 
-    # Make predictions using segmented models
+    # Make segmented predictions
     new_data['predicted'] = new_data.apply(
         lambda row: model_trainer.predict(row, data_processor), axis=1
     )
@@ -236,13 +260,39 @@ def main():
     # Smooth the predicted values
     new_data['predicted_smooth'] = savgol_filter(new_data['predicted'], 20, 3)
 
-    # Pass the cutoffs to plot_results to draw vertical lines
+    # -------------------------------------------------------------
+    # SINGLE (non-segmented) model - Main Model from file 3_1_approach_comparison.py
+    # -------------------------------------------------------------
+    X_full = data_processor.data[['angle', 'heat', 'field', 'emission', 'x_m']]
+    y_full = data_processor.data[data_processor.prediction_parameter]
+
+    single_model = xgb.XGBRegressor(
+        objective='reg:squarederror',
+        learning_rate=0.1,
+        max_depth=3,
+        colsample_bytree=0.8,
+        subsample=1,
+        n_estimators=300
+    )
+    single_model.fit(X_full, y_full)
+
+    # Predict with the single model
+    new_data['predicted_single'] = single_model.predict(
+        new_data[['angle', 'heat', 'field', 'emission', 'x_m']]
+    )
+    # Smooth single-model predictions
+    new_data['predicted_single_smooth'] = savgol_filter(new_data['predicted_single'], 5, 3)
+
+    # ------------------------------------------
+    # Actual vs. Two Models
+    # ------------------------------------------
     Plotter.plot_results(
-        new_data,
-        data_processor.fusion_data,
-        data_processor.prediction_parameter,
-        data_processor.first_cutoff,
-        data_processor.last_cutoff
+        new_data=new_data,
+        fusion_data=data_processor.fusion_data,
+        prediction_parameter=data_processor.prediction_parameter,
+        first_cutoff=data_processor.first_cutoff,
+        last_cutoff=data_processor.last_cutoff,
+        single_model_y=new_data['predicted_single_smooth']
     )
 
     # evaluation
@@ -252,16 +302,33 @@ def main():
         on='x_m', how='left'
     )
     merged = merged[merged[data_processor.prediction_parameter] > 10]
-    mae = Evaluator.calculate_mae(
+
+    # Evaluate segmented model
+    mae_segmented = Evaluator.calculate_mae(
         merged[data_processor.prediction_parameter],
         merged['predicted']
     )
-    mape = Evaluator.calculate_mape(
+    mape_segmented = Evaluator.calculate_mape(
         merged[data_processor.prediction_parameter],
         merged['predicted']
     )
-    print('Mean Absolute Error:', round(mae, 2))
-    print('Mean Absolute Percentage Error:', round(mape, 2), '%')
+    print('Segmented Model:')
+    print('  MAE:', round(mae_segmented, 2))
+    print('  MAPE:', round(mape_segmented, 2), '%')
+
+    # Evaluate single model
+    mae_single = Evaluator.calculate_mae(
+        merged[data_processor.prediction_parameter],
+        merged['predicted_single']
+    )
+    mape_single = Evaluator.calculate_mape(
+        merged[data_processor.prediction_parameter],
+        merged['predicted_single']
+    )
+    print('\nSingle Model:')
+    print('  MAE:', round(mae_single, 2))
+    print('  MAPE:', round(mape_single, 2), '%')
+
 
 if __name__ == "__main__":
     main()
