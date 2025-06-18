@@ -190,4 +190,4 @@ if __name__ == "__main__":
 
     tuner = XGBoostHyperparameterTuner(data_path='data/df_data.pkl', target_variable=target_variable)
     
-    tuner.run(output_file='testing_parameter_{target_variable}.csv')
+    tuner.run(output_file=f'testing_parameter_{target_variable}.csv')
