@@ -78,7 +78,7 @@ class DataExtractor:
             df : DataFrame
                 The DataFrame with the added 'x_m' column.
         """
-        length_tokamak = pd.DataFrame(self.df1["x  (m)"]*10) #Takes the length of the wall. Error in input data - need to mutiply by 10
+        length_tokamak = pd.DataFrame(self.df1["x  (m)"]*10) #Takes the length of the wall. Error in input data - need to multiply by 10
         df = pd.concat([df]*len(length_tokamak), ignore_index=True)
         length_tokamak = pd.DataFrame(np.repeat(length_tokamak.values, 21, axis=0))
         df.loc[:,"x_m"] = length_tokamak
