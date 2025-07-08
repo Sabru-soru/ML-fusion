@@ -91,11 +91,11 @@ class DataExplorer:
 
         self.fig.update_layout(
             template='plotly_white',
-            title=f'Actual Data. Parameter: {self.prediction_parameter}',
+            title=f'Parameter: {self.prediction_parameter}',
             xaxis_title='x [m]',
-            yaxis_title='Value',
+            yaxis_title='Value [V]',
             legend_title='angle, heat, field, emission',
-            font=dict(color='black'),
+            font=dict(family='Times New Roman', color='black'),
         )
 
     def describe_data(self):

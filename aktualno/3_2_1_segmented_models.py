@@ -157,7 +157,7 @@ class Plotter:
             x=fusion_data['x_m'],
             y=fusion_data[prediction_parameter],
             mode='lines',
-            name='Actual',
+            name=f'{prediction_parameter} obtained by physical simulation',
             line=dict(color='black', width=3)
         ))
 
@@ -167,7 +167,7 @@ class Plotter:
             y=new_data['predicted_smooth'],
             mode='lines',
             name='Segmented prediction',
-            line=dict(dash='dash', width=2, color='red')
+            line=dict(dash='dash', width=3, color='blue')
         ))
 
         # If a single-model array
@@ -177,22 +177,21 @@ class Plotter:
                 y=single_model_y,
                 mode='lines',
                 name='Single-model prediction (Main Model)',
-                line=dict(dash='dash', width=2, color='blue')
+                line=dict(dash='dash', width=3, color='red')
             ))
         
         fig.update_layout(
             template='plotly_white',
-            title=f'Predicted vs. Actual Data. Parameter: {prediction_parameter}',
-            xaxis_title='x_m [m]',
-            yaxis_title='Parameter value',
-            legend_title='Traces',
-            font=dict(color='black'),
+            title=f'Segmented vs Single Model. Parameter: {prediction_parameter}',
+            xaxis_title='x [m]',
+            yaxis_title='Parameter value [V]',
+            font=dict(family='Times New Roman', color='black'),
             legend=dict(
-                orientation='h',
-                yanchor='top',
-                y=-0.2,
-                xanchor='center',
-                x=0.5
+                orientation='v',
+                yanchor='bottom',
+                y=0.02,
+                xanchor='right',
+                x=0.98
             )
         )
 

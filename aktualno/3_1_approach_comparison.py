@@ -1,6 +1,6 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.graph_objects as go
+import plotly.express as px
 import xgboost as xgb
 from sklearn.metrics import mean_absolute_error
 import numpy as np
@@ -53,26 +53,26 @@ class PermutationImportanceAnalyzer:
         }).sort_values('Importance_Mean', ascending=False)
     
     def plot_importance(self):
-
-        plt.rcParams.update({
-            'font.family': 'serif'
-        })
+        fig = go.Figure(go.Bar(
+            x=self.perm_df['Importance_Mean'],
+            y=self.perm_df['Feature'],
+            error_x=dict(type='data', array=self.perm_df['Importance_Std']),
+            orientation='h',
+            marker=dict(color='grey')
+        ))
         
-        sns.set_style("whitegrid")
-        plt.figure(figsize=(10, 6))
-        sns.barplot(
-            x='Importance_Mean',
-            y='Feature',
-            data=self.perm_df,
-            xerr=self.perm_df['Importance_Std'],
-            orient='h',
-            color='grey'
+        fig.update_layout(
+            title='Permutation Feature Importances',
+            xaxis_title='Mean Decrease in MAE',
+            yaxis_title='Feature',
+            template='plotly_white',
+            font=dict(family='Times New Roman', color='black'),
+            xaxis=dict(range=[min(self.perm_df['Importance_Mean']) * 1.1, 
+                             max(self.perm_df['Importance_Mean']) * 1.1]),
+            yaxis=dict(automargin=True)
         )
-        plt.title('Permutation Feature Importances')
-        plt.xlabel('Mean Decrease in MAE')
-        plt.ylabel('Feature')
-        plt.tight_layout()
-        plt.show()
+        
+        fig.write_html("fig/feature_importance.html", auto_open=True)
 
 class Evaluator:
     @staticmethod
@@ -85,20 +85,47 @@ class Evaluator:
 
 class Plotter:
     def __init__(self):
-        sns.set_style("whitegrid")
+        pass
     
     def plot_comparison(self, x_m, actual, predicted_dict, prediction_parameter):
-        plt.figure(figsize=(12, 6))
-        plt.plot(x_m, actual, label=f'Actual {prediction_parameter}', linewidth=3)
-        for label, predicted in predicted_dict.items():
-            plt.plot(x_m, predicted, label=label, linestyle='--', linewidth=2)
-        plt.xlabel('x_m [m]')
-        plt.ylabel(prediction_parameter)
-        plt.title(f'Actual vs Predicted {prediction_parameter}')
-        plt.legend(fontsize=12)
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
+        fig = go.Figure()
+        
+        # Add actual data
+        fig.add_trace(go.Scatter(
+            x=x_m,
+            y=actual,
+            mode='lines',
+            name=f'{prediction_parameter} obtained by physical simulation',
+            line=dict(color='black', width=3)
+        ))
+        
+        # Add predicted data
+        colors = ['red', 'blue', 'green']
+        for i, (label, predicted) in enumerate(predicted_dict.items()):
+            fig.add_trace(go.Scatter(
+                x=x_m,
+                y=predicted,
+                mode='lines',
+                name=label,
+                line=dict(dash='dash', width=3, color=colors[i % len(colors)])
+            ))
+        
+        fig.update_layout(
+            title=f'{prediction_parameter} obtained by physical simulation vs ML models',
+            xaxis_title='x [m]',
+            yaxis_title=prediction_parameter + ' [V]',
+            template='plotly_white',
+            font=dict(family='Times New Roman', color='black'),
+            legend=dict(
+            orientation='v',
+            yanchor='bottom',
+            y=0.02,
+            xanchor='right',
+            x=0.98
+            ),
+        )
+        
+        fig.write_html("fig/comparison_approach.html", auto_open=True)
 
 class XMModelTrainer:
     def __init__(self, data, prediction_parameter, hyper_params):
