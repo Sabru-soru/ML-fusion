@@ -30,7 +30,7 @@ class XGBoostHyperparameterTuner:
         print(f"Testing {len(self.combinations)} hyperparameter combinations.")
 
         # Initialize a dictionary to store results
-        self.results = {'learning_rate': [], 'max_depth': [], 'min_child_weight': [],
+        self.results = {'learning_rate': [], 'max_depth': [],
                         'subsample': [], 'colsample_bytree': [], 'n_estimators': [], 'error': []}
 
     def calculate_unique_combinations(self):
@@ -53,12 +53,11 @@ class XGBoostHyperparameterTuner:
         dict: A dictionary containing lists of hyperparameter values.
         """
         hyper_params = {
-            'learning_rate': [0.1, 0.2, 0.3],
-            'max_depth': [1, 2, 4],
-            'min_child_weight': [1, 2, 3],
-            'subsample': [0.1, 0.5, 0.6],
-            'colsample_bytree': [0.4, 0.6, 0.8],
-            'n_estimators': [500, 600, 700, 900, 1000]
+            'learning_rate': [0.01, 0.1, 0.2],
+            'max_depth': [3, 5, 7],
+            'subsample': [0.8, 1.0],
+            'colsample_bytree': [0.8, 1.0],
+            'n_estimators': [300, 500, 600, 1000]
         }
         return hyper_params
 
@@ -108,10 +107,9 @@ class XGBoostHyperparameterTuner:
                 n_jobs=-1,
                 learning_rate=params[0],
                 max_depth=params[1],
-                min_child_weight=params[2],
-                subsample=params[3],
-                colsample_bytree=params[4],
-                n_estimators=params[5]
+                subsample=params[2],
+                colsample_bytree=params[3],
+                n_estimators=params[4]
             )
 
             error_avg = []
@@ -147,10 +145,9 @@ class XGBoostHyperparameterTuner:
 
             self.results['learning_rate'].append(params[0])
             self.results['max_depth'].append(params[1])
-            self.results['min_child_weight'].append(params[2])
-            self.results['subsample'].append(params[3])
-            self.results['colsample_bytree'].append(params[4])
-            self.results['n_estimators'].append(params[5])
+            self.results['subsample'].append(params[2])
+            self.results['colsample_bytree'].append(params[3])
+            self.results['n_estimators'].append(params[4])
             self.results['error'].append(avg_error)
 
             print(f"Completed {idx}/{len(self.combinations)} combinations.")

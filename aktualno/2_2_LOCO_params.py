@@ -68,7 +68,7 @@ if __name__ == "__main__":
     param_grid = {
         'n_estimators': [300, 500, 600, 1000],
         'max_depth': [3, 5, 7],
-        'learning_rate': [0.01, 0.1, 0.3],
+        'learning_rate': [0.01, 0.1, 0.2],
         'subsample': [0.8, 1.0],
         'colsample_bytree': [0.8, 1.0]
     }
